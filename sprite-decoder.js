@@ -29,7 +29,7 @@ Info and notes:
 Reference:
 - https://www.youtube.com/watch?v=ZI50XUeN6QE&ab_channel=RetroGameMechanicsExplained
 
-Symbols that we can use to represent the 4 gba colors (white, light gray, dark gray and black)
+Symbols that we can use to represent the 4 gb colors (white, light gray, dark gray and black)
 - 00 White      : &#9633; □
 - 10 Light Gray : &#9640; ▨
 - 01 Dark Gray  : &#9641; ▩
@@ -85,7 +85,7 @@ function rle_encode(n) {
     // e.g. n=0b101101 (45)
 
     // offset to deal with 1
-    n = n + 1 // n=0b101110
+    n = n + 1 // n=0b101110 (46)
     //console.log(`n=${n}, and binN=${n.toString(2)}`)
     
     let v = n - Math.pow(2, n.toString(2).length - 1) // v=0b1110
@@ -134,6 +134,7 @@ function rle_decode(encoded) {
 
 assertBinsSame(rle_decode(0b11110_01110), 0b101101)
 assertBinsSame(rle_decode(0b11110_01110_111111), 0b101101) // extra bits after N are ignored
+assertBinsSame(rle_decode(0b1001), 0b100)
 assertBinsSame(rle_decode(0b01), 0b10)
 assertBinsSame(rle_decode(0b00), 0b1)
 
@@ -143,16 +144,62 @@ assertBinsSame(rle_decode(0b00), 0b1)
 */
 
 function decompress_bp(bitplane) {
-    let isRle = bitplane.charAt(0) == '0'
-    let decompressed = '';
-    for (let i = 1; i < bitplane.length; i++) {
-        if (isRle) {
-            
+    /*
+    algo:
+    - read first bit. 0 it's RLE, 1 it's data
+    - for rle:
+      - keep reading bits until reach a 0
+    */
+    const bitplane_str = bitplane.toString(2)
+    let decompressed = ''
+
+    let is_rle = bitplane_str.charAt(0) == '0'
+    let rle_len = ''
+    let rle_n = ''
+    for (let i = 1; i < bitplane_str.length; i++) {
+        if (is_rle) {
+            let str_digit = bitplane_str.charAt(i)
+            rle_len += str_digit
         }
     }
+}
+
+function read_rle(bitplane_str, index) {
+    // console.log({bitplane_str});
+    
+    let rle_len  = ''
+    let rle_n    = ''
+    
+    for (let i = index; i < bitplane_str.length; i++) {
+        let digit = bitplane_str.charAt(i)
+        if (!rle_len || rle_len.charAt(rle_len.length - 1) == '1') {
+            // reading length
+            rle_len += digit
+        } else {
+            // reading n
+            rle_n += digit
+        }
+        if (rle_len.length == rle_n.length) break
+    }
+
+    // console.log({rle_len, rle_n});
+    return rle_decode(parseInt(rle_len + rle_n, 2))
 }
 
 let compressed   = 0b0100110110011010_0011111110100011_011110110101000
 let decompressed = 0b0000000010110000_0000000000000000_0001111111010000_10111101101010n
 
+read_rle('01001101100110100011111110100011011110110101000', 1)
+
 console.log('finished script')
+
+/*
+4 bits   - sprite width  (in tiles)
+4 bits   - sprite height (in tiles)
+1 bit    - primary buffer
+1 bit    - initial packet
+var      - compressed data for primary bitplane
+1-2 bits - encoding method
+1 bit    - initial packet
+var      - compressed data for secondary bitplane
+*/
